@@ -75,9 +75,15 @@ def tablaPlan(ID_CARRERA,f,fGeneracion):
 		tablaGeneracion(ID_PLAN[n],GENERACION[n],fGeneracion)
 
 def tablaGeneracion(ID_PLAN,GENERACION,FILE):
-	
 	ID_PLAN_GENERACION = ID_PLAN + GENERACION
 	FILE.writerow([ID_PLAN_GENERACION,ID_PLAN,GENERACION])
+
+def tablaSemestre(fSemestre):
+	nombresSemestres=["NO APLICA","PRIMER","SENGUDO","TERCERO","CUARTO","QUINTO","SEXTO","SEPTIMO","OCTAVO","NOVENO","DECIMO"]
+	numero = []
+	for n in range(len(nombresSemestres)):
+		fSemestre.writerow([n,nombresSemestres[n]])
+	
 
 
 
@@ -89,6 +95,9 @@ def tablaGeneracion(ID_PLAN,GENERACION,FILE):
 		
 
 def main():
-	tablaCarrera()
+	#tablaCarrera()
+	#fSemestre = csv.writer(open("SEMESTRE.csv","w"))
+	#tablaSemestre(fSemestre)
+
 
 main()
