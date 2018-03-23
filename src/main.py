@@ -10,7 +10,7 @@ def tablaCarrera():
 	fPlan = csv.writer(open("PLAN.csv", "w"))
 	fGeneracion = csv.writer(open("GENERACION.csv","w"))
 	f.writerow(["ID_CARRERA","NOMBRE"])
-	fPlan.writerow(["ID_PLAN","ID_CARRERA","NOMBRE","CREDITOS_OBLIGATORIOS","CREDITOS_OPTATIVOS","ID_PLAN_BASE","SEMESTRES_CURRICULARES","SEMESTRES_REGLAMENTARIOS","GENERACION"])
+	fPlan.writerow(["ID_PLAN","ID_CARRERA","NOMBRE","CREDITOS_OBLIGATORIOS","CREDITOS_OPTATIVOS","ID_PLAN_BASE","ID_CARRERA_INTERNA","SEMESTRES_CURRICULARES","SEMESTRES_REGLAMENTARIOS","GENERACION"])
 	fGeneracion.writerow(["ID_PLAN_GENERACION","ID_PLAN","GENERACION"])
 	web = http.request('GET', 'http://servacad.ingenieria.unam.mx/~consumapa/mapas.php')
 	soup = BeautifulSoup(web.data, 'lxml')
@@ -64,14 +64,14 @@ def tablaPlan(ID_CARRERA,f,fGeneracion):
 						if valor.startswith("ING"):
 							NOMBRE.append(valor)
 					bPlan = soup.find_all('b')
-					SEMESTRES_CURRICULARES.append(bPlan[9].get_text()[0:2])
+					SEMESTRES_CURRICULARES.append(bPlan[9].get_text()[0:1])
 					SEMESTRES_REGLAMENTARIOS.append(str(math.ceil(int(bPlan[9].get_text()[0:2])+(int(bPlan[9].get_text()[0:2])/2))))
 					CREDITOS_OBLIGATORIOS.append(bPlan[11].getText())
 					CREDITOS_OPTATIVOS.append(bPlan[12].getText())
 					GENERACION.append(generacion)
 	for n in range(len(ID_PLAN)):
 		print(ID_PLAN[n]+","+ID_CARRERA,NOMBRE[n]+","+CREDITOS_OBLIGATORIOS[n]+","+CREDITOS_OPTATIVOS[n]+","+""+","+SEMESTRES_CURRICULARES[n]+","+SEMESTRES_REGLAMENTARIOS[n])
-		f.writerow([ID_PLAN[n],ID_CARRERA,NOMBRE[n],CREDITOS_OBLIGATORIOS[n],CREDITOS_OPTATIVOS[n],"",SEMESTRES_CURRICULARES[n],SEMESTRES_REGLAMENTARIOS[n],GENERACION[n]])
+		f.writerow([ID_PLAN[n],ID_CARRERA,NOMBRE[n],CREDITOS_OBLIGATORIOS[n],CREDITOS_OPTATIVOS[n],"","",SEMESTRES_CURRICULARES[n],SEMESTRES_REGLAMENTARIOS[n]])
 		tablaGeneracion(ID_PLAN[n],GENERACION[n],fGeneracion)
 
 def tablaGeneracion(ID_PLAN,GENERACION,FILE):
@@ -83,21 +83,33 @@ def tablaSemestre(fSemestre):
 	numero = []
 	for n in range(len(nombresSemestres)):
 		fSemestre.writerow([n,nombresSemestres[n]])
+
+def tablaEstructura(fEstructura, ID_PLAN):
+	http = urllib3.PoolManager()
+	web = http.request('GET', 'http://www.dgae-siae.unam.mx/educacion/planes.php?acc=est&pde=' + ID_PLAN + '&planop=1')
+	soup = BeautifulSoup(web.data, 'lxml')
+	asignaturas = soup.find_all('input')
+	for asignatura in asignaturas:
+		ID_CLAVE_ASIGNATURA = asignatura.get('value')
+		name = asignatura.get('name')
+		if str(name) == 'asg':
+			print(ID_CLAVE_ASIGNATURA)
+			web = http.request('GET', 'http://www.dgae-siae.unam.mx/educacion/asignaturas.php?ref=asgxpde&pde='+ ID_PLAN +'&asg='+ ID_CLAVE_ASIGNATURA)
+			soup = BeautifulSoup(web.data, 'lxml')
+			td = soup.find_all('td')
+			for registro in td:
+				clase = registro.get('class')
+				if str(clase) == '[\'CellTit\']':
+					
+
 	
-
-
-
-
-
-
-
-
-		
 
 def main():
 	#tablaCarrera()
 	#fSemestre = csv.writer(open("SEMESTRE.csv","w"))
+	fAsignatura = csv.writer(open("ASIGNATURA.csv","w"))
 	#tablaSemestre(fSemestre)
 
+	tablaEstructura(fAsignatura,"2040")
 
 main()
