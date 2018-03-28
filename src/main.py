@@ -3,20 +3,22 @@ from bs4 import BeautifulSoup
 import urllib3
 import csv
 import math
-
+import threading
+from csvToInsertSQL import generarSQL
 def tablaCarrera():
 	http = urllib3.PoolManager()
+	url = 'http://servacad.ingenieria.unam.mx/~consumapa/mapas.php'
 	fCarrera = csv.writer(open("CARRERA.csv", "w"))
 	fPlan = csv.writer(open("PLAN.csv", "w"))
 	fGeneracion = csv.writer(open("GENERACION.csv","w"))
 	fEstructura = csv.writer(open("ESTRUCTURA.csv","w"))
 	fAsignatura = csv.writer(open("ASIGNATURA.csv","w"))
 	fCarrera.writerow(["ID_CARRERA","NOMBRE"])
-	fPlan.writerow(["ID_PLAN","ID_CARRERA","NOMBRE","CREDITOS_OBLIGATORIOS","CREDITOS_OPTATIVOS","ID_PLAN_BASE","ID_CARRERA_INTERNA","SEMESTRES_CURRICULARES","SEMESTRES_REGLAMENTARIOS","GENERACION"])
+	fPlan.writerow(["ID_PLAN","ID_CARRERA","NOMBRE","CREDITOS_OBLIGATORIOS","CREDITOS_OPTATIVOS","ID_PLAN_BASE","ID_CARRERA_INTERNA","SEMESTRES_CURRICULARES","SEMESTRES_REGLAMENTARIOS"])
 	fGeneracion.writerow(["ID_PLAN_GENERACION","ID_PLAN","GENERACION"])
 	fEstructura.writerow(["ID_ESTRUCTURA","ID_PLAN","ID_ASIGNATURA","TIPO","ID_SEMESTRE","LABORATORIO"])
 	fAsignatura.writerow(["ID_ASIGNATURA","NOMBRE","CREDITOS","HORAS","DEPARTAMENTO","OFICIAL"])
-	web = http.request('GET', 'http://servacad.ingenieria.unam.mx/~consumapa/mapas.php')
+	web = http.request('GET', url)
 	soup = BeautifulSoup(web.data, 'lxml')
 	CARRERA = soup.find_all('td')
 	ID_CARRERA=[]
@@ -31,7 +33,9 @@ def tablaCarrera():
 			NOMBRE.append(contenido.get_text())
 	for n in range(len(ID_CARRERA)):
 		fCarrera.writerow([ID_CARRERA[n],NOMBRE[n]])
-		tablaPlan(ID_CARRERA[n],fPlan,fGeneracion, fEstructura, fAsignatura)
+		thread = threading.Thread(target=tablaPlan, args=(ID_CARRERA[n],fPlan,fGeneracion, fEstructura, fAsignatura,))
+		thread.start()
+		#tablaPlan(ID_CARRERA[n],fPlan,fGeneracion, fEstructura, fAsignatura)
 
 def tablaPlan(ID_CARRERA,f,fGeneracion, fEstructura, fAsignatura):
 	http = urllib3.PoolManager()
@@ -44,7 +48,8 @@ def tablaPlan(ID_CARRERA,f,fGeneracion, fEstructura, fAsignatura):
 	SEMESTRES_REGLAMENTARIOS = []
 	GENERACION = []
 	for generacion in generaciones:
-		web = http.request('GET', 'http://servacad.ingenieria.unam.mx/~consumapa/detalle_mapa.php?lacarrera='+ID_CARRERA+'&sumapa='+generacion)
+		url = 'http://servacad.ingenieria.unam.mx/~consumapa/detalle_mapa.php?lacarrera='+ID_CARRERA+'&sumapa='+generacion
+		web = http.request('GET', url)
 		soup = BeautifulSoup(web.data, 'lxml')
 		span = soup.find_all('span')
 		disponible = True
@@ -60,7 +65,8 @@ def tablaPlan(ID_CARRERA,f,fGeneracion, fEstructura, fAsignatura):
 				valign = clave.get('valign')
 				if str(clase) == '[\'celda_contenido_bis\']' and str(align) == 'center' and str(valign) == 'top' and len(str(clave.get_text()))==4:
 					ID_PLAN.append(clave.get_text())
-					web = http.request('GET', 'http://www.dgae-siae.unam.mx/educacion/planes.php?acc=est&pde='+clave.get_text()+'&planop=1')
+					url = 'http://www.dgae-siae.unam.mx/educacion/planes.php?acc=est&pde='+clave.get_text()+'&planop=1'
+					web = http.request('GET', url)
 					soup = BeautifulSoup(web.data, 'lxml')
 					tdPlan = soup.find_all('td')
 					for registro in tdPlan:
@@ -78,7 +84,9 @@ def tablaPlan(ID_CARRERA,f,fGeneracion, fEstructura, fAsignatura):
 		print(ID_PLAN[n]+","+ID_CARRERA,NOMBRE[n]+","+CREDITOS_OBLIGATORIOS[n]+","+CREDITOS_OPTATIVOS[n]+","+""+","+SEMESTRES_CURRICULARES[n]+","+SEMESTRES_REGLAMENTARIOS[n])
 		f.writerow([ID_PLAN[n],ID_CARRERA,NOMBRE[n],CREDITOS_OBLIGATORIOS[n],CREDITOS_OPTATIVOS[n],"","",SEMESTRES_CURRICULARES[n],SEMESTRES_REGLAMENTARIOS[n]])
 		tablaGeneracion(ID_PLAN[n],GENERACION[n],fGeneracion)
-		tablaEstructura(fEstructura,ID_PLAN[n],fAsignatura)
+		thread = threading.Thread(target=tablaEstructura, args=(fEstructura,ID_PLAN[n],fAsignatura,))
+		thread.start()
+		#tablaEstructura(fEstructura,ID_PLAN[n],fAsignatura)
 
 def tablaGeneracion(ID_PLAN,GENERACION,FILE):
 	ID_PLAN_GENERACION = ID_PLAN + GENERACION
@@ -92,7 +100,8 @@ def tablaSemestre(fSemestre):
 
 def tablaEstructura(fEstructura, ID_PLAN, fAsignatura):
 	http = urllib3.PoolManager()
-	web = http.request('GET', 'http://www.dgae-siae.unam.mx/educacion/planes.php?acc=est&pde=' + ID_PLAN + '&planop=1')
+	url = 'http://www.dgae-siae.unam.mx/educacion/planes.php?acc=est&pde=' + ID_PLAN + '&planop=1'
+	web = http.request('GET', url)
 	soup = BeautifulSoup(web.data, 'lxml')
 	asignaturas = soup.find_all('input')
 	ID_ESTRUCTURA = []
@@ -109,7 +118,8 @@ def tablaEstructura(fEstructura, ID_PLAN, fAsignatura):
 			ClaveAsignatura = asignatura.get('value')
 			ID_ASIGNATURA.append(ClaveAsignatura)
 			ID_ESTRUCTURA.append(ID_PLAN+ClaveAsignatura)
-			web = http.request('GET', 'http://www.dgae-siae.unam.mx/educacion/asignaturas.php?ref=asgxpde&pde='+ ID_PLAN +'&asg='+ ClaveAsignatura)
+			url = 'http://www.dgae-siae.unam.mx/educacion/asignaturas.php?ref=asgxpde&pde='+ ID_PLAN +'&asg='+ ClaveAsignatura
+			web = http.request('GET', url)
 			soup = BeautifulSoup(web.data, 'lxml')
 			td = soup.find_all('td')
 			for registro in td:
@@ -161,12 +171,33 @@ def tablaEstructura(fEstructura, ID_PLAN, fAsignatura):
 	print(str(len(ID_ESTRUCTURA))+" "+str(len(ID_ASIGNATURA))+" "+str(len(TIPO))+" "+str(len(ID_SEMESTRE)))
 	for n in range(len(ID_ESTRUCTURA)):
 		fEstructura.writerow([ID_ESTRUCTURA[n],ID_PLAN,ID_ASIGNATURA[n],TIPO[n],ID_SEMESTRE[n],"0"])
-		fAsignatura.writerow([ID_ASIGNATURA[n],NOMBRE[n],CREDITOS[n],HORAS[n],"","1"])
+		fAsignatura.writerow([ID_ASIGNATURA[n],NOMBRE[n],CREDITOS[n],HORAS[n],"0","1"])
+
+def eliminarRepetidos(file):
+	f = open(file,"r")
+	columnNames = f.readline()
+	listaChida = list(set(f))
+	f2 = open(file,"w")
+	f2.write(columnNames)
+	for elemento in listaChida:
+		f2.write(elemento)
+	f.close()
+	f2.close()
+
+
 
 def main():
-	tablaCarrera()
-	fSemestre = csv.writer(open("SEMESTRE.csv","w"))
-	tablaSemestre(fSemestre)
+	tablas = ['ASIGNATURA.csv', 'CARRERA.csv', 'PLAN.csv', 'GENERACION.csv','SEMESTRE.csv','ESTRUCTURA.csv']
+	#tablaCarrera()
+	#fSemestre = csv.writer(open("SEMESTRE.csv","w"))
+	#fSemestre.writerow(["ID_SEMESTRE", "NOMBRE"])
+	#tablaSemestre(fSemestre)
+	eliminarRepetidos("ASIGNATURA.csv")
+	eliminarRepetidos("PLAN.csv")
+	eliminarRepetidos("ESTRUCTURA.csv")
+	eliminarRepetidos("GENERACION.csv")
+	generarSQL(tablas)
+	
 
 	
 
